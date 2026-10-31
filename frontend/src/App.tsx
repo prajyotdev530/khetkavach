@@ -1,7 +1,7 @@
 // App shell: header (wordmark, tagline, language picker), the server wake-up check, and the routes.
-// If /health does not answer, we retry for 20 s with "Waking up the server…" (free hosting can sleep).
+// If /health does not answer, we retry for 60 s with "Waking up the server…" (free hosting can sleep).
 import { useEffect, useState } from "react";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { HashRouter, Link, Route, Routes } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { getJson, type Meta } from "@/lib/api";
 import { Home } from "@/pages/Home";
@@ -26,7 +26,7 @@ function useServer() {
         setMeta(await getJson<Meta>("/api/meta", 5000));
       } catch {
         if (!alive) return;
-        if (Date.now() - startedAt < 20000) {
+        if (Date.now() - startedAt < 60000) {
           setWake("waking");
           setTimeout(attempt, 2000);
         } else {
@@ -51,7 +51,7 @@ export default function App() {
   const languages = meta?.languages ?? DEFAULT_LANGUAGES;
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <TooltipProvider delayDuration={150}>
         <div className="flex h-[100dvh] flex-col bg-slate-50 text-slate-900">
           <header className="flex flex-wrap items-center justify-between gap-2 bg-brand-900 px-4 py-2 text-white">
@@ -81,6 +81,6 @@ export default function App() {
           </Routes>
         </div>
       </TooltipProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

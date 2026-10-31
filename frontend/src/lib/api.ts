@@ -1,7 +1,9 @@
 // Types mirroring the backend's Pydantic schemas (backend/app/models.py) and small fetch helpers.
 // Every number shown in the UI arrives through these types from the backend; nothing is computed or invented here.
 
-export const API_URL: string = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "http://localhost:7860";
+// Backend URL: runtime config (public/config.js, editable after deploy) first, then the build-time VITE_API_URL.
+const runtimeUrl = (window as unknown as { KK_API_URL?: string }).KK_API_URL;
+export const API_URL: string = (runtimeUrl || (import.meta.env.VITE_API_URL as string | undefined) || "http://localhost:7860").replace(/\/$/, "");
 
 export type Level = "low" | "moderate" | "high";
 export type Hazard = "drought" | "excess_rain" | "heat";

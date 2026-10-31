@@ -63,7 +63,7 @@ export function Home({ meta, lang, languages }: { meta: Meta | null; lang: strin
   const [copied, setCopied] = useState(false);
   const share = async () => {
     if (!run.analysisId) return;
-    const url = `${window.location.origin}/a/${run.analysisId}`;
+    const url = `${window.location.origin}${window.location.pathname}#/a/${run.analysisId}`;
     try { await navigator.clipboard.writeText(url); } catch { /* clipboard blocked: the link is still shown in the address bar of the share page */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
