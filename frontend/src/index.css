@@ -1,0 +1,33 @@
+/* Global styles: Tailwind layers plus the map animations from BUILD_SPEC §4. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { margin: 0; -webkit-font-smoothing: antialiased; }
+
+/* Satellite pixels stay crisp when the browser scales the small (10 m/pixel) overlay PNGs. */
+.kk-pixelated { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* Analysis box: colour changes fade over 800 ms. */
+.kk-box { transition: stroke 0.8s ease, fill 0.8s ease, stroke-width 0.8s ease; }
+/* While the agent runs: grey dashed outline pulsing between 0.4 and 1 opacity every 1.2 s. */
+.kk-box.kk-running { animation: kk-pulse 1.2s ease-in-out infinite; }
+/* High risk: pulse 3 times, then hold steady. */
+.kk-box.kk-high { animation: kk-pulse 1.2s ease-in-out 0.8s 3; }
+@keyframes kk-pulse { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .kk-box.kk-running, .kk-box.kk-high { animation: none; } }
+
+/* Label pinned above the analysis box. */
+.kk-label-icon { background: none; border: none; }
+.kk-label {
+  transform: translate(-50%, calc(-100% - 6px));
+  white-space: nowrap;
+  color: #fff;
+  font: 600 12px/1.2 Inter, system-ui, sans-serif;
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  width: max-content;
+}
+.leaflet-container { font-family: Inter, system-ui, sans-serif; }
