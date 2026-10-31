@@ -206,3 +206,18 @@ If context is lost: re-read both specs and this file, then continue from "Next".
   `--reload`; React StrictMode fired TTS twice → in-flight guard in VoicePlayer.
 - VERIFY Supabase: tables now exist (user ran schema.sql) → `/health` supabase "ok"; analyses survive restarts.
 - Next: pick the 3 quick-farm chips with live runs, then the P0 acceptance checklist (§12), then deployment files.
+
+### Step 7 — P1 + deployment prep (31 Oct 2026)
+- Done: F13 batch (`/api/batch` SSE, `/batch` page with pins, sorted table, CSV), F11 voice/text question
+  (`/api/ask`: Saaras STT → translate → Gemini grounded answer → validator → translate back; `AskBox`), F15 share
+  (`/a/:id` replays the saved trace). F14 not built: data.gov.in API timed out, then HTTP 502 (spike_datagov.py).
+- Verified live once each: batch 3 points 2.3 s (sea rejected); Hindi typed + spoken question answered with
+  citations; share page loads from Supabase; batch page shows 3 pins + sorted table.
+- Fixed: corrupt Sentinel-2 scene (B04 0-255 values, Punjab 28 Oct) → scenes with implausible values or failed
+  reads are skipped.
+- Deployment: GitHub push was blocked by secret scanning (keys pasted into early `.env.example` commits) → pushed
+  one clean squashed commit as `main`; full history kept locally on branch `local-history`.
+  Hugging Face Docker Spaces now need PRO (HTTP 402) → added `render.yaml` (free Docker web service) and a
+  `$PORT`-aware Dockerfile. Vercel config in `frontend/vercel.json`.
+- Tests at last run: 44 unit passed, 13 live passed. Cached repeat run measured 4.4-5.0 s (target 3 s; the two Gemini
+  calls are not cached).
