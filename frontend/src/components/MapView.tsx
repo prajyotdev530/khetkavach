@@ -1,8 +1,10 @@
 // MapView (F1, F12): Leaflet map with satellite/street base layers, click-to-pick, the 500 m analysis box that
 // pulses grey while the agent runs and then takes its risk colour, the crop-health overlays from Sentinel-2/1,
-// a layer control (top-right) and the legend (bottom-left). BUILD_SPEC §4.
-import { useEffect, useMemo, useRef } from "react";
+// a layer control (top-right) and the legend (bottom-left). BUILD_SPEC §4. The 2D/3D switch swaps in Map3D, which
+// is loaded only when picked so the normal page stays light.
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
+import { Loader2 } from "lucide-react";
 import {
   CircleMarker, ImageOverlay, MapContainer, Marker, Pane, Rectangle, TileLayer, ZoomControl, useMap, useMapEvents,
 } from "react-leaflet";
@@ -26,7 +28,10 @@ export interface CompareState {
   t: number; // 0 = last year, 100 = now
 }
 
-const INDIA_CENTER: [number, number] = [22.5, 79.0];
+export type ViewMode = "2d" | "3d";
+type Map3DComponent = typeof import("./Map3D").Map3D;
+
+export const INDIA_CENTER: [number, number] = [22.5, 79.0];
 const OVERLAY_OPACITY = 0.7;
 
 function ClickHandler({ onPick }: { onPick: (lat: number, lon: number) => void }) {
@@ -46,6 +51,38 @@ function FlyTo({ target }: { target: [number, number] | null }) {
 /** Find one overlay by layer and period. */
 function find(overlays: Overlay[], layer: string, period: "now" | "last_year") {
   return overlays.find((o) => o.layer === layer && o.period === period);
+}
+
+/** The evidence images to draw, bottom to top, with their opacity. Shared by the 2D and 3D maps. */
+export function visibleOverlays(ov: Overlay[], layers: LayerState, compare: CompareState | null) {
+  const out: { o: Overlay; opacity: number }[] = [];
+  const add = (o: Overlay | undefined, opacity: number) => { if (o) out.push({ o, opacity }); };
+  if (layers.truecolor && compare?.layer !== "truecolor") add(find(ov, "truecolor", "now"), OVERLAY_OPACITY);
+  if (layers.ndvi && compare?.layer !== "ndvi") add(find(ov, "ndvi", "now"), OVERLAY_OPACITY);
+  if (!compare) {
+    if (layers.delta_ndvi) add(find(ov, "delta_ndvi", "now"), OVERLAY_OPACITY);
+    if (layers.radar) add(find(ov, "radar", "now"), OVERLAY_OPACITY);
+  } else {
+    add(find(ov, compare.layer, "last_year"), OVERLAY_OPACITY * (1 - compare.t / 100));
+    add(find(ov, compare.layer, "now"), OVERLAY_OPACITY * (compare.t / 100));
+  }
+  return out;
+}
+
+/** Text and colour of the label above the box, e.g. "High drought risk · 72"; null when there is no box. */
+export function boxLabel(run: RunState): { text: string; bg: string } | null {
+  if (!run.bounds || run.status === "rejected") return null;
+  const h = run.risk?.headline;
+  const level = run.risk?.overall_level;
+  if (h && level) {
+    return {
+      text: `${LEVEL_WORD[h.level]} ${HAZARD_LABEL[h.hazard as keyof typeof HAZARD_LABEL].toLowerCase()} risk · ${h.score}`,
+      bg: h.level === "moderate" ? "#6D4C00" : LEVEL_COLOR[h.level],
+    };
+  }
+  if (run.status === "error") return { text: "Analysis stopped", bg: "#424242" };
+  if (run.status === "done") return { text: "Not enough data", bg: "#424242" };
+  return { text: "Analysing…", bg: "#424242" };
 }
 
 function EvidenceImage({ o, opacity }: { o: Overlay; opacity: number }) {
@@ -91,22 +128,11 @@ function RiskBox({ run, visible }: { run: RunState; visible: boolean }) {
 /** Label pinned above the box, e.g. "High drought risk · 72". */
 function BoxLabel({ run }: { run: RunState }) {
   const icon = useMemo(() => {
-    if (!run.bounds || run.status === "rejected") return null;
-    const h = run.risk?.headline;
-    const level = run.risk?.overall_level;
-    let text = "Analysing…";
-    let bg = "#424242";
-    if (h && level) {
-      text = `${LEVEL_WORD[h.level]} ${HAZARD_LABEL[h.hazard as keyof typeof HAZARD_LABEL].toLowerCase()} risk · ${h.score}`;
-      bg = h.level === "moderate" ? "#6D4C00" : LEVEL_COLOR[h.level];
-    } else if (run.status === "error") {
-      text = "Analysis stopped";
-    } else if (run.status === "done") {
-      text = "Not enough data";
-    }
+    const label = boxLabel(run);
+    if (!label) return null;
     return L.divIcon({
       className: "kk-label-icon",
-      html: `<div class="kk-label" style="background:${bg}">${text}</div>`,
+      html: `<div class="kk-label" style="background:${label.bg}">${label.text}</div>`,
       iconSize: [0, 0],
       iconAnchor: [0, 0],
     });
@@ -129,10 +155,47 @@ export function MapView({
   const ov = run.overlays;
   const hasRadar = !!find(ov, "radar", "now");
   const hasOptical = !!find(ov, "ndvi", "now");
+  const [mode, setMode] = useState<ViewMode>("2d");
+  const [Map3D, setMap3D] = useState<Map3DComponent | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const fallBack = (message: string) => { setMode("2d"); setNote(message); };
+  useEffect(() => {
+    if (mode !== "3d" || Map3D) return;
+    let alive = true;
+    import("./Map3D")
+      .then((m) => { if (alive) setMap3D(() => m.Map3D); })
+      .catch(() => { if (alive) fallBack("The 3D view could not load. Showing the flat map."); });
+    return () => { alive = false; };
+  }, [mode, Map3D]);
+
+  const controls = (
+    <>
+      <SearchBox onPick={(hit) => onPick(hit.lat, hit.lon)} />
+      <LayerControl layers={layers} setLayers={setLayers} hasRadar={hasRadar} hasOptical={hasOptical}
+        mode={mode} setMode={(m) => { setNote(null); setMode(m); }} note={note} />
+      <Legend run={run} layers={layers} compare={compare} />
+    </>
+  );
+
+  if (mode === "3d") {
+    return (
+      <div className="relative h-full w-full bg-slate-200">
+        {Map3D ? (
+          <Map3D run={run} layers={layers} compare={compare} onPick={onPick} onFail={fallBack} />
+        ) : (
+          <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-700" role="status">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading the 3D view…
+          </div>
+        )}
+        {controls}
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full">
-      <MapContainer center={INDIA_CENTER} zoom={5} zoomControl={false} className="h-full w-full" worldCopyJump>
+      <MapContainer center={target ?? INDIA_CENTER} zoom={target ? 16 : 5} zoomControl={false} className="h-full w-full" worldCopyJump>
         {layers.base === "satellite" ? (
           <TileLayer
             key="esri"
@@ -152,22 +215,9 @@ export function MapView({
         <ClickHandler onPick={onPick} />
         <FlyTo target={target} />
         <Pane name="evidence" style={{ zIndex: 350 }}>
-          {layers.truecolor && find(ov, "truecolor", "now") && compare?.layer !== "truecolor" && (
-            <EvidenceImage o={find(ov, "truecolor", "now")!} opacity={OVERLAY_OPACITY} />
-          )}
-          {layers.ndvi && find(ov, "ndvi", "now") && compare?.layer !== "ndvi" && (
-            <EvidenceImage o={find(ov, "ndvi", "now")!} opacity={OVERLAY_OPACITY} />
-          )}
-          {layers.delta_ndvi && !compare && find(ov, "delta_ndvi", "now") && (
-            <EvidenceImage o={find(ov, "delta_ndvi", "now")!} opacity={OVERLAY_OPACITY} />
-          )}
-          {layers.radar && hasRadar && !compare && <EvidenceImage o={find(ov, "radar", "now")!} opacity={OVERLAY_OPACITY} />}
-          {compare && find(ov, compare.layer, "last_year") && (
-            <EvidenceImage o={find(ov, compare.layer, "last_year")!} opacity={OVERLAY_OPACITY * (1 - compare.t / 100)} />
-          )}
-          {compare && find(ov, compare.layer, "now") && (
-            <EvidenceImage o={find(ov, compare.layer, "now")!} opacity={OVERLAY_OPACITY * (compare.t / 100)} />
-          )}
+          {visibleOverlays(ov, layers, compare).map(({ o, opacity }) => (
+            <EvidenceImage key={`${o.layer}-${o.period}`} o={o} opacity={opacity} />
+          ))}
         </Pane>
         <RiskBox key={run.runId ?? `${target?.[0]},${target?.[1]}`} run={run} visible={layers.risk} />
         {target && run.status !== "rejected" && (
@@ -175,21 +225,21 @@ export function MapView({
         )}
         {layers.risk && <BoxLabel run={run} />}
       </MapContainer>
-
-      <SearchBox onPick={(hit) => onPick(hit.lat, hit.lon)} />
-      <LayerControl layers={layers} setLayers={setLayers} hasRadar={hasRadar} hasOptical={hasOptical} />
-      <Legend run={run} layers={layers} compare={compare} />
+      {controls}
     </div>
   );
 }
 
 function LayerControl({
-  layers, setLayers, hasRadar, hasOptical,
+  layers, setLayers, hasRadar, hasOptical, mode, setMode, note,
 }: {
   layers: LayerState;
   setLayers: (fn: (l: LayerState) => LayerState) => void;
   hasRadar: boolean;
   hasOptical: boolean;
+  mode: ViewMode;
+  setMode: (m: ViewMode) => void;
+  note: string | null;
 }) {
   const box = (key: keyof Omit<LayerState, "base">, label: string, enabled = true) => (
     <label className={`flex min-h-[32px] cursor-pointer items-center gap-2 ${enabled ? "" : "opacity-50"}`}>
@@ -219,6 +269,21 @@ function LayerControl({
           </button>
         ))}
       </div>
+      <div className="mb-1 flex overflow-hidden rounded-md border border-slate-300" role="radiogroup" aria-label="Map view">
+        {(["2d", "3d"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={mode === m}
+            className={`min-h-[32px] flex-1 px-2 font-medium ${mode === m ? "bg-brand-700 text-white" : "bg-white text-slate-700"}`}
+            onClick={() => setMode(m)}
+          >
+            {m === "2d" ? "2D" : "3D"}
+          </button>
+        ))}
+      </div>
+      {note && <p className="mb-1 max-w-[11rem] text-[11px] text-high-text" role="alert">{note}</p>}
       <div className="hidden sm:block">
         {box("risk", "Risk outline")}
         {box("delta_ndvi", "Change vs last year", hasOptical)}

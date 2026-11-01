@@ -31,3 +31,6 @@ body { margin: 0; -webkit-font-smoothing: antialiased; }
   width: max-content;
 }
 .leaflet-container { font-family: Inter, system-ui, sans-serif; }
+
+/* Batch map: clicking drops a pin, so show a crosshair instead of the grab hand. */
+.kk-crosshair.leaflet-grab { cursor: crosshair; }

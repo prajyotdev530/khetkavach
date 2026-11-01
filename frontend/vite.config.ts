@@ -9,7 +9,8 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: { port: 5173 },
   build: {
-    chunkSizeWarningLimit: 900,
+    // MapLibre (the 3D view, loaded only when picked) is about 1 MB on its own.
+    chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
         // Split the big libraries so they cache separately.
