@@ -12,9 +12,15 @@ from typing import Optional
 from app import cache
 from app.config import risk_rules
 from app.models import ForecastResult
-from app.sources.common import SourceUnavailable, get_json, now_ist, round_or_none
+from app.sources.common import RETRY_STATUS, SourceUnavailable, get_json, now_ist, round_or_none
 
 URL = "https://api.open-meteo.com/v1/forecast"
+# Open-Meteo serves the same /v1/forecast query (same models, same values) from these hosts too, and each host
+# counts its own rate limit. Shared cloud egress IPs (Render) can hit HTTP 429 on the main host, so on a failure
+# the same request is sent to the next host.
+MIRRORS = ("https://historical-forecast-api.open-meteo.com/v1/forecast",
+           "https://previous-runs-api.open-meteo.com/v1/forecast")
+NO_429_RETRY = frozenset({500, 502, 503, 504})
 SOURCE = "Open-Meteo Forecast"
 SOURCE_URL = "https://open-meteo.com/en/docs"
 DAILY = ("precipitation_sum", "precipitation_probability_max", "temperature_2m_max", "temperature_2m_min",
@@ -104,11 +110,25 @@ async def get_forecast(lat: float, lon: float, today: date) -> ForecastResult:
     key = f"forecast:{lat:.2f},{lon:.2f}:{today.isoformat()}"
 
     async def fetch() -> dict:
-        """Call Open-Meteo once with all daily and hourly fields, then derive the risk inputs."""
+        """Call Open-Meteo with all daily and hourly fields (main host, then mirrors), then derive the risk inputs.
+
+        A 429 on one host moves straight to the next host instead of waiting; if every host fails, the last
+        host's error is raised so the agent can fall back.
+        """
         params = {"latitude": round(lat, 4), "longitude": round(lon, 4), "timezone": "Asia/Kolkata",
                   "forecast_days": FORECAST_DAYS, "past_days": PAST_DAYS,
                   "daily": ",".join(DAILY), "hourly": ",".join(HOURLY)}
-        data = await get_json(URL, params, SOURCE)
+        hosts = (URL, *MIRRORS)
+        reasons = []
+        for i, url in enumerate(hosts):
+            try:
+                last = i == len(hosts) - 1
+                data = await get_json(url, params, SOURCE, retry_status=RETRY_STATUS if last else NO_429_RETRY)
+                break
+            except SourceUnavailable as exc:
+                reasons.append(exc.reason)
+        else:
+            raise SourceUnavailable(SOURCE, " · ".join(dict.fromkeys(reasons)))
         fetched = now_ist()
         out = derive(data, today, fetched)
         out["source"] = {"name": SOURCE, "url": SOURCE_URL, "fetched_at": fetched.isoformat()}

@@ -84,11 +84,14 @@ async def get_json(
     headers: Optional[dict[str, str]] = None,
     timeout_s: Optional[float] = None,
     client: Optional[httpx.AsyncClient] = None,
+    retry_status: frozenset[int] | set[int] = RETRY_STATUS,
 ) -> Any:
     """GET a JSON document with the shared timeout and retry policy, or raise SourceUnavailable.
 
     Retries twice (after 0.5 s and 1.5 s) on timeouts, connection errors, 429 and 5xx. Other HTTP errors fail at
-    once because retrying would not help (e.g. a 400 for a bad parameter).
+    once because retrying would not help (e.g. a 400 for a bad parameter). `retry_status` narrows which HTTP codes
+    are retried, so a caller with a mirror can skip straight to it on a 429. The API's own error text (e.g.
+    Open-Meteo's "reason") is kept in the failure message.
     """
     timeout = timeout_s or get_settings().http_timeout_s
     own = client is None
@@ -101,7 +104,13 @@ async def get_json(
                 if resp.status_code == 200:
                     return resp.json()
                 last_reason = f"HTTP {resp.status_code}"
-                if resp.status_code not in RETRY_STATUS:
+                try:
+                    detail = resp.json().get("reason")
+                except (ValueError, AttributeError):
+                    detail = None
+                if detail:
+                    last_reason += f": {str(detail)[:120]}"
+                if resp.status_code not in retry_status:
                     break
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_reason = f"{type(exc).__name__}"
