@@ -1,0 +1,186 @@
+==> Cloning from https://github.com/prajyotdev530/khetkavach
+==> Checking out commit 4483a5cdcd07fd8b3ecf8424c313e89a18142286 in branch main
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 758B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.11-slim
+#2 ...
+
+#3 [auth] library/python:pull render-prod/docker-mirror-repository/library/python:pull token for us-west1-docker.pkg.dev
+#3 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.11-slim
+#2 DONE 0.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 104B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [1/6] FROM docker.io/library/python:3.11-slim@sha256:673719e071ecf27434fd2635bbd8d00f49f4fdd81f243143438a42ced8bedf60
+#6 resolve docker.io/library/python:3.11-slim@sha256:673719e071ecf27434fd2635bbd8d00f49f4fdd81f243143438a42ced8bedf60 done
+#6 DONE 0.0s
+
+#7 importing cache manifest
+#7 inferred cache manifest type: application/vnd.oci.image.manifest.v1+json done
+#7 DONE 0.3s
+
+#5 [internal] load build context
+#5 transferring context: 210.98kB done
+#5 DONE 0.0s
+
+#8 [2/6] RUN useradd -m -u 1000 user
+#8 CACHED
+
+#9 [4/6] COPY requirements.txt .
+#9 CACHED
+
+#10 [5/6] RUN pip install -r requirements.txt
+#10 CACHED
+
+#11 [3/6] WORKDIR /home/user/app
+#11 CACHED
+
+#12 [6/6] COPY --chown=user app ./app
+#12 CACHED
+
+#13 exporting cache to registry
+#13 sending cache export
+#13 ...
+
+#14 exporting to image
+#14 exporting layers done
+#14 pushing layers 0.1s done
+#14 DONE 0.2s
+
+#13 exporting cache to registry
+#13 sending cache export 0.2s done
+#13 DONE 0.2s
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+Traceback (most recent call last):
+  File "/usr/local/bin/uvicorn", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1631, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1552, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1415, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 910, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/main.py", line 448, in main
+    run(
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/main.py", line 620, in run
+    config.load_app()
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/config.py", line 434, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/home/user/app/app/main.py", line 24, in <module>
+    from app.agent import graph as agent_graph
+  File "/home/user/app/app/agent/graph.py", line 26, in <module>
+    from app.agent import llm, tools
+  File "/home/user/app/app/agent/llm.py", line 20, in <module>
+    from app.agent.tools import CATALOGUE
+  File "/home/user/app/app/agent/tools.py", line 16, in <module>
+    from app.sources import baseline, satellite_optical, satellite_radar, weather
+  File "/home/user/app/app/sources/satellite_optical.py", line 21, in <module>
+    import odc.stac
+  File "/usr/local/lib/python3.11/site-packages/odc/stac/__init__.py", line 3, in <module>
+    from odc.loader import configure_rio, configure_s3_access
+  File "/usr/local/lib/python3.11/site-packages/odc/loader/__init__.py", line 5, in <module>
+    from ._builder import chunked_load, resolve_chunk_shape
+  File "/usr/local/lib/python3.11/site-packages/odc/loader/_builder.py", line 26, in <module>
+    from odc.geo.xr import xr_coords
+  File "/usr/local/lib/python3.11/site-packages/odc/geo/xr.py", line 16, in <module>
+    from ._xr_interop import (
+  File "/usr/local/lib/python3.11/site-packages/odc/geo/_xr_interop.py", line 58, in <module>
+    from ._compress import compress
+  File "/usr/local/lib/python3.11/site-packages/odc/geo/_compress.py", line 6, in <module>
+    import rasterio
+  File "/usr/local/lib/python3.11/site-packages/rasterio/__init__.py", line 25, in <module>
+    from rasterio._base import DatasetBase
+ImportError: libexpat.so.1: cannot open shared object file: No such file or directory
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Instance srv-dbis67u7bikc73dnp3pg-x94pw restarted
+Traceback (most recent call last):
+  File "/usr/local/bin/uvicorn", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1631, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1552, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1415, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 910, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/main.py", line 448, in main
+    run(
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/main.py", line 620, in run
+    config.load_app()
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/config.py", line 434, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/home/user/app/app/main.py", line 24, in <module>
+    from app.agent import graph as agent_graph
+  File "/home/user/app/app/agent/graph.py", line 26, in <module>
+    from app.agent import llm, tools
+  File "/home/user/app/app/agent/llm.py", line 20, in <module>
+    from app.agent.tools import CATALOGUE
+  File "/home/user/app/app/agent/tools.py", line 16, in <module>
+    from app.sources import baseline, satellite_optical, satellite_radar, weather
+  File "/home/user/app/app/sources/satellite_optical.py", line 21, in <module>
+    import odc.stac
+  File "/usr/local/lib/python3.11/site-packages/odc/stac/__init__.py", line 3, in <module>
+    from odc.loader import configure_rio, configure_s3_access
+  File "/usr/local/lib/python3.11/site-packages/odc/loader/__init__.py", line 5, in <module>
+    from ._builder import chunked_load, resolve_chunk_shape
+  File "/usr/local/lib/python3.11/site-packages/odc/loader/_builder.py", line 26, in <module>
+    from odc.geo.xr import xr_coords
+  File "/usr/local/lib/python3.11/site-packages/odc/geo/xr.py", line 16, in <module>
+    from ._xr_interop import (
+  File "/usr/local/lib/python3.11/site-packages/odc/geo/_xr_interop.py", line 58, in <module>
+    from ._compress import compress
+  File "/usr/local/lib/python3.11/site-packages/odc/geo/_compress.py", line 6, in <module>
+    import rasterio
+  File "/usr/local/lib/python3.11/site-packages/rasterio/__init__.py", line 25, in <module>
+    from rasterio._base import DatasetBase
+ImportError: libexpat.so.1: cannot open shared object file: No such file or directory

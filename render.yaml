@@ -1,14 +1,18 @@
-# Render blueprint: the KhetKavach backend as a free Docker web service (Dashboard → New → Blueprint → this repo).
+# Render blueprint: the KhetKavach backend as a free native-Python web service (no Docker).
+# Dashboard → New → Blueprint → this repo, or create a Web Service by hand with the same settings.
 services:
   - type: web
     name: khetkavach-api
-    runtime: docker
+    runtime: python
     plan: free
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: GEMINI_API_KEY
         sync: false
       - key: SARVAM_API_KEY
