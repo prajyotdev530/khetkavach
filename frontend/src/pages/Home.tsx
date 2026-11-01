@@ -1,6 +1,6 @@
 // Home (route "/"): the main demo screen. Map on the left (60%), results on the right (40%); stacked on phones
 // with the map in the top 45%. Screen states from BUILD_SPEC §3: idle, running, done, partial, rejected, error.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Info, MapPin, RotateCcw, Share2, XCircle } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { postJson, type Crop, type Language, type Meta, type Translation } from "@/lib/api";
@@ -48,8 +48,13 @@ export function Home({ meta, lang, languages }: { meta: Meta | null; lang: strin
     start(params);
   }, [crop, lang, sowing, start]);
 
-  // Links like /?lat=19.1&lon=74.7&crop=wheat (from the batch view) start a live analysis on load.
+  // On load: links like /?lat=19.1&lon=74.7&crop=wheat (from the batch view) start that analysis. Otherwise ask the
+  // browser for the user's location; if allowed, analyse that spot; if denied (or unavailable), keep the normal
+  // click/search flow.
   const [search, setSearch] = useSearchParams();
+  const [geo, setGeo] = useState<"idle" | "asking" | "denied">("idle");
+  const launchRef = useRef(launch);
+  launchRef.current = launch;
   useEffect(() => {
     const la = Number(search.get("lat")), lo = Number(search.get("lon"));
     const c = search.get("crop") as Crop | null;
@@ -57,7 +62,21 @@ export function Home({ meta, lang, languages }: { meta: Meta | null; lang: strin
       if (c && CROPS.some((x) => x.value === c)) setCrop(c);
       setSearch({}, { replace: true });
       setTimeout(() => start({ lat: la, lon: lo, crop: c ?? crop, lang }), 0);
+      return;
     }
+    if (!("geolocation" in navigator)) return;
+    let alive = true;
+    setGeo("asking");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!alive) return;
+        setGeo("idle");
+        launchRef.current(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => { if (alive) setGeo("denied"); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 },
+    );
+    return () => { alive = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [copied, setCopied] = useState(false);
@@ -175,7 +194,9 @@ export function Home({ meta, lang, languages }: { meta: Meta | null; lang: strin
           <div className="flex flex-1 items-center justify-center p-6 text-center text-slate-600">
             <div>
               <MapPin className="mx-auto mb-2 h-8 w-8 text-brand-600" aria-hidden />
-              <p className="font-medium text-slate-800">Click any farm in India or search a village</p>
+              <p className="font-medium text-slate-800">
+                {geo === "asking" ? "Finding your location… (allow location access to analyse your farm)" : "Click any farm in India or search a village"}
+              </p>
               <p className="mt-1 text-sm">KhetKavach checks live satellite images, the 16-day forecast and the 20-year normal for a 500 m box around it.</p>
             </div>
           </div>
